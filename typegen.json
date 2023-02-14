@@ -1,0 +1,7 @@
+{
+  "outDir": "src/types",
+  "specVersions": "https://acala.archive.subsquid.io/graphql",
+  "events": [],
+  "calls": [],
+  "storage": ["System.Account"]
+}
