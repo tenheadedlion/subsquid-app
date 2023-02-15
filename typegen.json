@@ -1,11 +1,7 @@
 {
   "outDir": "src/types",
-  "specVersions": "https://kusama.archive.subsquid.io/graphql",
-  "events": [
-    "Balances.Transfer"
-  ],
-  "calls": [ 
-  ],
-  "storage": [
-  ]
+  "specVersions": "https://acala.archive.subsquid.io/graphql",
+  "events": [],
+  "calls": [],
+  "storage": ["System.Account"]
 }
