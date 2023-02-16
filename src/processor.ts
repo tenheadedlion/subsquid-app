@@ -1,41 +1,51 @@
+import { hexToU8a } from "@polkadot/util"
 import { lookupArchive } from "@subsquid/archive-registry"
 import * as ss58 from "@subsquid/ss58"
-import { BatchContext, BatchProcessorItem, SubstrateBatchProcessor } from "@subsquid/substrate-processor"
+import { BatchBlock, BatchContext, BatchProcessorItem, SubstrateBatchProcessor } from "@subsquid/substrate-processor"
 import { Store, TypeormDatabase } from "@subsquid/typeorm-store"
 import { In } from "typeorm"
 import { Account } from "./model"
 import { SystemAccountStorage } from "./types/storage"
 
-
 const processor = new SubstrateBatchProcessor()
-    .setBlockRange({ from: 2_858_000, to: 2_858_700 })
+    .setBlockRange({
+        from: 2_858_000
+        //, to: 2_858_700 
+    })
     .setDataSource({
         archive: lookupArchive("acala", { release: "FireSquid" }),
         chain: 'wss://acala-rpc-0.aca-api.network'
     })
-    .includeAllBlocks({ from: 2_858_000, to: 2_858_700 })
-//.addCall('*', {
-//    range: {
-//        from: 1000000
-//    }
-//} as const)
+    .addCall('*')
+    .includeAllBlocks({
+        from: 2_858_000
+        //, to: 2_858_700 
+    })
 
 
 type Item = BatchProcessorItem<typeof processor>
 type Ctx = BatchContext<Store, Item>
+type Block = BatchBlock<Item>;
 
-
-let lastNounce = 0;
 processor.run(new TypeormDatabase(), async ctx => {
     for (const block of ctx.blocks) {
-        // block.header is of type { hash: string }
-        let storage = new SystemAccountStorage(ctx, block.header)
-        let address = ss58.decode('25Ysz77gGHBVDwzdG8menWgLtkJt5JJtYbkXicm744KS8Xid').bytes
-        let nonce = (await storage.asV2000.get(address)).nonce
-        if (nonce > lastNounce) {
-            ctx.log.info(`nonce at block ${block.header.height}: ${nonce.toString()}`)
+        for (let item of block.items) {
+            if (item.kind === "call") {
+                const extrinsic = item.extrinsic;
+                const signature = extrinsic.signature;
+                if (signature) {
+                    let addrAsHex = signature.address.value;
+                    let addrAsBytes = hexToU8a(addrAsHex);
+                    let nonce = await getNonce(ctx, block, addrAsBytes);
+                    ctx.log.info(`${addrAsHex}'s nonce at block ${block.header.height}: ${nonce.toString()}`)
+                }
+            }
         }
-        lastNounce = nonce;
     }
 })
 
+async function getNonce(ctx: Ctx, block: Block, publicKey: Uint8Array): Promise<any> {
+    let storage = new SystemAccountStorage(ctx, block.header)
+    let nonce = (await storage.asV2000.get(publicKey)).nonce
+    return nonce
+}
