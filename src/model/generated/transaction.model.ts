@@ -14,16 +14,17 @@ export class Transaction {
     @ManyToOne_(() => Account, {nullable: true})
     account!: Account
 
-    @Index_()
     @Column_("int4", {nullable: false})
     nonce!: number
 
     @Column_("bool", {nullable: false})
     result!: boolean
 
+    @Index_()
     @Column_("int4", {nullable: false})
     blockNumber!: number
 
+    @Index_()
     @Column_("int4", {nullable: false})
     timestamp!: number
 }

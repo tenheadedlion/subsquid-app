@@ -1,14 +1,14 @@
 type Account @entity {
+  "Account address"
   id: ID!
-  txs: [Transaction!]! @derivedFrom(field: "account")
-  txCount: Int!
+  transactions: [Transaction!]! @derivedFrom(field: "account")
 }
 
 type Transaction @entity {
   id: ID!
-  account: Account! @index
-  nonce: Int! @index
+  account: Account!
+  nonce: Int!
   result: Boolean!
-  blockNumber: Int!
-  timestamp: Int!
+  blockNumber: Int! @index
+  timestamp: Int! @index
 }

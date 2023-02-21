@@ -7,12 +7,12 @@ export class Account {
         Object.assign(this, props)
     }
 
+    /**
+     * Account address
+     */
     @PrimaryColumn_()
     id!: string
 
     @OneToMany_(() => Transaction, e => e.account)
-    txs!: Transaction[]
-
-    @Column_("int4", {nullable: false})
-    txCount!: number
+    transactions!: Transaction[]
 }
