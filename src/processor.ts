@@ -4,48 +4,83 @@ import * as ss58 from "@subsquid/ss58"
 import { BatchBlock, BatchContext, BatchProcessorItem, SubstrateBatchProcessor } from "@subsquid/substrate-processor"
 import { Store, TypeormDatabase } from "@subsquid/typeorm-store"
 import { In } from "typeorm"
-import { Account } from "./model"
 import { SystemAccountStorage } from "./types/storage"
+import { Transaction } from './model/generated/transaction.model';
+import { getChainConfig, WHITELIST_CONFIG } from './config/index';
+import { string } from './model/generated/marshal';
+import { Account } from './model/generated/account.model';
+
+const CHAIN_CONFIGS = getChainConfig();
 
 const processor = new SubstrateBatchProcessor()
-    .setBlockRange({
-        from: 2_858_000
-        //, to: 2_858_700 
-    })
-    .setDataSource({
-        archive: lookupArchive("acala", { release: "FireSquid" }),
-        chain: 'wss://acala-rpc-0.aca-api.network'
-    })
+    .setBlockRange(CHAIN_CONFIGS.blockRange)
+    .setDataSource(CHAIN_CONFIGS.dataSource)
     .addCall('*')
-    .includeAllBlocks({
-        from: 2_858_000
-        //, to: 2_858_700 
-    })
-
+    .includeAllBlocks()
 
 type Item = BatchProcessorItem<typeof processor>
 type Ctx = BatchContext<Store, Item>
 type Block = BatchBlock<Item>;
 
 processor.run(new TypeormDatabase(), async ctx => {
+    let knownAccounts = await ctx.store.find(Account).then(accounts => {
+        return new Map(accounts.map(a => [a.id, a]))
+    })
+    let txs = getTransactions(ctx, knownAccounts);
+    console.log(txs);
+})
+
+function getTransactions(ctx: Ctx, knownAccounts: Map<string, Account>): Transaction[] {
+    let txs: Transaction[] = [];
+
     for (const block of ctx.blocks) {
+        let blockNumber = block.header.height;
+        let timestamp = block.header.timestamp;
         for (let item of block.items) {
             if (item.kind === "call") {
                 const extrinsic = item.extrinsic;
                 const signature = extrinsic.signature;
+                // we only want signed extrinsics
                 if (signature) {
-                    let addrAsHex = signature.address.value;
-                    let addrAsBytes = hexToU8a(addrAsHex);
-                    let nonce = await getNonce(ctx, block, addrAsBytes);
-                    ctx.log.info(`${addrAsHex}'s nonce at block ${block.header.height}: ${nonce.toString()}`)
+                    // only handler addresses in the whitelist
+                    let addrAsHex = signature.address.value as string;
+                    if (WHITELIST_CONFIG.whitelistItems.includes(addrAsHex)) {
+                        let nonce = signature.signedExtensions.CheckNonce.nonce;
+                        let result = extrinsic.success;
+                        ctx.log.info(`${timestamp}|${blockNumber}: ${addrAsHex}'s nonce at block ${block.header.height}: ${nonce.toString()}: ${result}`)
+
+
+                        let account = knownAccounts.get(addrAsHex);
+                        if (account === undefined) {
+                            account = new Account({
+                                id: addrAsHex,
+                                txCount: 0
+                            });
+                        }
+
+                        txs.push({
+                            id: item.extrinsic.id,
+                            account,
+                            nonce,
+                            result,
+                            blockNumber,
+                            timestamp
+                        })
+                    }
+
                 }
             }
         }
     }
-})
+    return txs;
+}
 
-async function getNonce(ctx: Ctx, block: Block, publicKey: Uint8Array): Promise<any> {
-    let storage = new SystemAccountStorage(ctx, block.header)
-    let nonce = (await storage.asV2000.get(publicKey)).nonce
-    return nonce
+function getAccount(m: Map<string, Account>, id: string): Account {
+    let acc = m.get(id)
+    if (acc == null) {
+        acc = new Account()
+        acc.id = id
+        m.set(id, acc)
+    }
+    return acc
 }

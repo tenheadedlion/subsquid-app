@@ -1,4 +1,5 @@
-import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_} from "typeorm"
+import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, OneToMany as OneToMany_} from "typeorm"
+import {Transaction} from "./transaction.model"
 
 @Entity_()
 export class Account {
@@ -8,4 +9,10 @@ export class Account {
 
     @PrimaryColumn_()
     id!: string
+
+    @OneToMany_(() => Transaction, e => e.account)
+    txs!: Transaction[]
+
+    @Column_("int4", {nullable: false})
+    txCount!: number
 }
