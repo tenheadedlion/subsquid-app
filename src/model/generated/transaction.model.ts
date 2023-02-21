@@ -25,6 +25,6 @@ export class Transaction {
     blockNumber!: number
 
     @Index_()
-    @Column_("int4", {nullable: false})
-    timestamp!: number
+    @Column_("timestamp with time zone", {nullable: false})
+    timestamp!: Date
 }

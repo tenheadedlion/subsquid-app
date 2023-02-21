@@ -54,7 +54,7 @@ processor.run(new TypeormDatabase(), async ctx => {
                             nonce,
                             result,
                             blockNumber,
-                            timestamp
+                            timestamp: new Date(timestamp)
                         }));
                     }
 

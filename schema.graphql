@@ -10,5 +10,5 @@ type Transaction @entity {
   nonce: Int!
   result: Boolean!
   blockNumber: Int! @index
-  timestamp: Int! @index
+  timestamp: DateTime! @index
 }
