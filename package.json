@@ -1,5 +1,5 @@
 {
-  "name": "kusama-transfers",
+  "name": "index-transactions",
   "private": true,
   "engines": {
     "node": ">=16"
